@@ -214,7 +214,36 @@ export default function App() {
   const recorridoCompletado = leerAlmacenamiento(CLAVES_ALMACENAMIENTO.recorridoListo, false);
 
   const [vistaActiva, setVistaActiva] = useState('inicio');
-  const [pestanaAdminCompleta, setPestanaAdminCompleta] = useState('fallas');
+  const [pestanaAdminCompleta, setPestanaAdminCompleta] = useState('resumen');
+  const [indicePlanEditando, setIndicePlanEditando] = useState(null);
+  const [formPlanAdmin, setFormPlanAdmin] = useState({
+    nombre: '',
+    precioMensual: '',
+    insignia: '',
+    destacado: false,
+    activo: true,
+    descripcion: '',
+    herramientaEtiqueta: '',
+    herramientaQueEs: '',
+    herramientaOferta: ''
+  });
+  const [nuevaHerramientaPlan, setNuevaHerramientaPlan] = useState({
+    planIndice: 0,
+    etiqueta: '',
+    queEs: '',
+    oferta: ''
+  });
+  const [busquedaMensajes, setBusquedaMensajes] = useState('');
+  const [filtroMensajes, setFiltroMensajes] = useState('todos');
+  const [busquedaFallas, setBusquedaFallas] = useState('');
+  const [filtroPrioridadFallas, setFiltroPrioridadFallas] = useState('Todas');
+  const [filtroEstadoFallas, setFiltroEstadoFallas] = useState('Todos');
+  const [notasResolucionFallas, setNotasResolucionFallas] = useState({});
+  const [bannerAvisoAdmin, setBannerAvisoAdmin] = useState(() =>
+    leerAlmacenamiento('kronodo_banner_admin_v1', { activo: false, texto: 'Versión Beta 2026 • Nuevas funciones de Krono IA disponibles.' })
+  );
+  const [confirmarReinicioAdmin, setConfirmarReinicioAdmin] = useState(false);
+  const [mensajeSistemaAdmin, setMensajeSistemaAdmin] = useState('');
   const [fotoFundadoraFaltante, setFotoFundadoraFaltante] = useState(false);
 
   const [mostrarRecorrido, setMostrarRecorrido] = useState(!recorridoCompletado);
@@ -313,6 +342,10 @@ export default function App() {
   useEffect(() => {
     guardarAlmacenamiento(CLAVES_ALMACENAMIENTO.usuarioActual, usuarioActual);
   }, [usuarioActual]);
+
+  useEffect(() => {
+    guardarAlmacenamiento('kronodo_banner_admin_v1', bannerAvisoAdmin);
+  }, [bannerAvisoAdmin]);
 
   useEffect(() => {
     if (!temporizadorActivo) return;
@@ -569,7 +602,13 @@ export default function App() {
     setEnviandoContacto(true);
 
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const nuevoMensaje = { ...formularioContacto, fecha: hora };
+    const nuevoMensaje = {
+      id: `msg-${Date.now()}`,
+      ...formularioContacto,
+      fecha: hora,
+      leido: false,
+      respondido: false
+    };
 
     try {
       const respuesta = await fetch(URL_FORMULARIO_CONTACTO, {
@@ -658,6 +697,205 @@ export default function App() {
 
   const eliminarFalla = (id) => {
     setFallas((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const avanzarEstadoFalla = (id) => {
+    const ordenEstados = ['Abierta', 'En revisión', 'Resuelta'];
+    setFallas((prev) =>
+      prev.map((f) => {
+        if (f.id !== id) return f;
+        const idxActual = ordenEstados.indexOf(f.estado);
+        const siguienteEstado = ordenEstados[(idxActual + 1) % ordenEstados.length];
+        const nota = (notasResolucionFallas[id] || '').trim();
+        return {
+          ...f,
+          estado: siguienteEstado,
+          notaResolucion: nota || f.notaResolucion || ''
+        };
+      })
+    );
+  };
+
+  const guardarNotaFalla = (id) => {
+    const nota = (notasResolucionFallas[id] || '').trim();
+    setFallas((prev) => prev.map((f) => (f.id === id ? { ...f, notaResolucion: nota } : f)));
+    setMensajeSistemaAdmin('Nota técnica guardada en el reporte.');
+    setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+  };
+
+  const iniciarEdicionPlan = (indice) => {
+    const planObj = planes[indice];
+    if (!planObj) return;
+    setIndicePlanEditando(indice);
+    setFormPlanAdmin({
+      nombre: planObj.nombre || '',
+      precioMensual: String(planObj.precioMensual ?? 0),
+      insignia: planObj.insignia || '',
+      destacado: Boolean(planObj.destacado),
+      activo: planObj.activo !== false,
+      descripcion: planObj.descripcion || '',
+      herramientaEtiqueta: planObj.herramientas?.[0]?.etiqueta || '',
+      herramientaQueEs: planObj.herramientas?.[0]?.queEs || '',
+      herramientaOferta: planObj.herramientas?.[0]?.oferta || ''
+    });
+  };
+
+  const cancelarEdicionPlan = () => {
+    setIndicePlanEditando(null);
+    setFormPlanAdmin({
+      nombre: '',
+      precioMensual: '',
+      insignia: '',
+      destacado: false,
+      activo: true,
+      descripcion: '',
+      herramientaEtiqueta: '',
+      herramientaQueEs: '',
+      herramientaOferta: ''
+    });
+  };
+
+  const guardarPlanAdmin = (e) => {
+    e.preventDefault();
+    const precioParseado = parseFloat(formPlanAdmin.precioMensual);
+    const precioFinal = Number.isNaN(precioParseado) ? 0 : Math.max(0, precioParseado);
+
+    if (indicePlanEditando !== null) {
+      setPlanes((prev) =>
+        prev.map((p, idx) => {
+          if (idx !== indicePlanEditando) return p;
+          const herramientasActualizadas = [...(p.herramientas || [])];
+          if (formPlanAdmin.herramientaEtiqueta.trim()) {
+            herramientasActualizadas[0] = {
+              etiqueta: formPlanAdmin.herramientaEtiqueta.trim(),
+              queEs: formPlanAdmin.herramientaQueEs.trim() || 'Herramienta incluida en este plan.',
+              oferta: formPlanAdmin.herramientaOferta.trim() || 'Incluido en el plan.'
+            };
+          }
+          return {
+            ...p,
+            nombre: formPlanAdmin.nombre.trim(),
+            precioMensual: precioFinal,
+            insignia: formPlanAdmin.insignia.trim(),
+            destacado: formPlanAdmin.destacado,
+            activo: formPlanAdmin.activo,
+            descripcion: formPlanAdmin.descripcion.trim(),
+            herramientas: herramientasActualizadas
+          };
+        })
+      );
+      setMensajeSistemaAdmin('Plan actualizado en el catálogo.');
+      cancelarEdicionPlan();
+    } else {
+      const siguienteIdx = planes.length;
+      setPlanes((prev) => [
+        ...prev,
+        {
+          nombre: formPlanAdmin.nombre.trim(),
+          precioMensual: precioFinal,
+          insignia: formPlanAdmin.insignia.trim() || 'Nuevo',
+          destacado: formPlanAdmin.destacado,
+          activo: formPlanAdmin.activo,
+          descripcion: formPlanAdmin.descripcion.trim(),
+          herramientas: [
+            {
+              etiqueta: formPlanAdmin.herramientaEtiqueta.trim() || 'To-Do List 1-3-5',
+              queEs: formPlanAdmin.herramientaQueEs.trim() || 'Priorización diaria inteligente.',
+              oferta: formPlanAdmin.herramientaOferta.trim() || 'Acceso completo incluido.'
+            }
+          ]
+        }
+      ]);
+      setHerramientasSeleccionadas((prev) => ({ ...prev, [siguienteIdx]: 0 }));
+      setMensajeSistemaAdmin('Nuevo plan publicado en el catálogo.');
+      cancelarEdicionPlan();
+    }
+    setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+  };
+
+  const alternarVisibilidadPlan = (indice) => {
+    setPlanes((prev) =>
+      prev.map((p, idx) => (idx === indice ? { ...p, activo: p.activo === false ? true : false } : p))
+    );
+  };
+
+  const eliminarPlan = (indice) => {
+    if (planes.length <= 1) {
+      setMensajeSistemaAdmin('Debe quedar al menos un plan activo en el catálogo.');
+      setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+      return;
+    }
+    setPlanes((prev) => prev.filter((_, idx) => idx !== indice));
+    if (indicePlanEditando === indice) cancelarEdicionPlan();
+  };
+
+  const agregarHerramientaAPlan = (e) => {
+    e.preventDefault();
+    const idxPlan = Number(nuevaHerramientaPlan.planIndice);
+    if (!nuevaHerramientaPlan.etiqueta.trim()) return;
+    setPlanes((prev) =>
+      prev.map((p, idx) =>
+        idx === idxPlan
+          ? {
+              ...p,
+              herramientas: [
+                ...(p.herramientas || []),
+                {
+                  etiqueta: nuevaHerramientaPlan.etiqueta.trim(),
+                  queEs: nuevaHerramientaPlan.queEs.trim() || 'Funcionalidad especializada de Krono Do.',
+                  oferta: nuevaHerramientaPlan.oferta.trim() || 'Incluido en este plan.'
+                }
+              ]
+            }
+          : p
+      )
+    );
+    setNuevaHerramientaPlan((prev) => ({ ...prev, etiqueta: '', queEs: '', oferta: '' }));
+    setMensajeSistemaAdmin('Herramienta añadida al plan.');
+    setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+  };
+
+  const eliminarHerramientaDePlan = (planIdx, herrIdx) => {
+    setPlanes((prev) =>
+      prev.map((p, idx) => {
+        if (idx !== planIdx) return p;
+        if ((p.herramientas || []).length <= 1) return p;
+        return {
+          ...p,
+          herramientas: p.herramientas.filter((_, hI) => hI !== herrIdx)
+        };
+      })
+    );
+  };
+
+  const alternarEstadoMensaje = (indiceObjetivo, campo) => {
+    setMensajesGuardados((prev) =>
+      prev.map((m, idx) => (idx === indiceObjetivo ? { ...m, [campo]: !m[campo] } : m))
+    );
+  };
+
+  const eliminarMensajeGuardado = (indiceObjetivo) => {
+    setMensajesGuardados((prev) => prev.filter((_, idx) => idx !== indiceObjetivo));
+  };
+
+  const descargarRespaldoAdmin = () => {
+    const respaldo = {
+      fechaExportacion: new Date().toISOString(),
+      planes,
+      mensajesGuardados,
+      fallas,
+      tareas,
+      bannerAvisoAdmin
+    };
+    const blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = `respaldo-kronodo-${new Date().toISOString().slice(0, 10)}.json`;
+    enlace.click();
+    URL.revokeObjectURL(url);
+    setMensajeSistemaAdmin('Respaldo JSON descargado correctamente.');
+    setTimeout(() => setMensajeSistemaAdmin(''), 3000);
   };
 
   const alternarMusica = async () => {
@@ -1163,6 +1401,11 @@ export default function App() {
       </div>
 
       <main className="contenedor-principal">
+        {bannerAvisoAdmin?.activo && bannerAvisoAdmin?.texto && (
+          <div className="banner-aviso-global" role="status">
+            <span>{bannerAvisoAdmin.texto}</span>
+          </div>
+        )}
         {vistaActiva === 'equipo' && (
           <section id="equipo-krono">
             <div className="encabezado-subpagina">
@@ -1235,7 +1478,7 @@ export default function App() {
                 <span className="etiqueta-seccion">Centro de Control Administrativo</span>
                 <h1 className="titulo-seccion">Panel de Administración Completo</h1>
                 <p className="subtitulo-seccion">
-                  Gestión integral de reporte de fallas, mensajes recibidos y estado de datos de Krono Do.
+                  Control total de métricas, planes del catálogo, bandeja de mensajes, reporte de fallas y configuración del sistema.
                 </p>
               </div>
               <button type="button" className="boton-secundario" onClick={() => irASeccion('admin-panel')}>
@@ -1243,29 +1486,504 @@ export default function App() {
               </button>
             </div>
 
+            {mensajeSistemaAdmin && (
+              <div className="alerta-sistema-admin" role="status">
+                {mensajeSistemaAdmin}
+              </div>
+            )}
+
             <div className="barra-pestanas-admin">
               <button
                 type="button"
-                className={`boton-pestana-admin ${pestanaAdminCompleta === 'fallas' ? 'activo' : ''}`}
-                onClick={() => setPestanaAdminCompleta('fallas')}
+                className={`boton-pestana-admin ${pestanaAdminCompleta === 'resumen' ? 'activo' : ''}`}
+                onClick={() => setPestanaAdminCompleta('resumen')}
               >
-                Reporte de Fallas ({fallas.length})
+                1. Resumen y Métricas
+              </button>
+              <button
+                type="button"
+                className={`boton-pestana-admin ${pestanaAdminCompleta === 'planes' ? 'activo' : ''}`}
+                onClick={() => setPestanaAdminCompleta('planes')}
+              >
+                2. Planes y Catálogo ({planes.length})
               </button>
               <button
                 type="button"
                 className={`boton-pestana-admin ${pestanaAdminCompleta === 'mensajes' ? 'activo' : ''}`}
                 onClick={() => setPestanaAdminCompleta('mensajes')}
               >
-                Mensajes Recibidos ({mensajesGuardados.length})
+                3. Mensajes ({mensajesGuardados.length})
               </button>
               <button
                 type="button"
-                className={`boton-pestana-admin ${pestanaAdminCompleta === 'resumen' ? 'activo' : ''}`}
-                onClick={() => setPestanaAdminCompleta('resumen')}
+                className={`boton-pestana-admin ${pestanaAdminCompleta === 'fallas' ? 'activo' : ''}`}
+                onClick={() => setPestanaAdminCompleta('fallas')}
               >
-                Resumen del Sistema
+                4. Fallas y QA ({fallas.length})
+              </button>
+              <button
+                type="button"
+                className={`boton-pestana-admin ${pestanaAdminCompleta === 'configuracion' ? 'activo' : ''}`}
+                onClick={() => setPestanaAdminCompleta('configuracion')}
+              >
+                5. Configuración y Soporte
               </button>
             </div>
+
+            {pestanaAdminCompleta === 'resumen' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="cuadricula-kpis-admin">
+                  <div className="tarjeta-metrica">
+                    <div className="valor-metrica">{planes.filter((p) => p.activo !== false).length} / {planes.length}</div>
+                    <div className="etiqueta-metrica">Planes activos en catálogo</div>
+                  </div>
+                  <div className="tarjeta-metrica">
+                    <div className="valor-metrica">{mensajesGuardados.filter((m) => !m.leido).length}</div>
+                    <div className="etiqueta-metrica">Mensajes sin leer ({mensajesGuardados.length} totales)</div>
+                  </div>
+                  <div className="tarjeta-metrica">
+                    <div className="valor-metrica">{fallas.filter((f) => f.estado !== 'Resuelta').length}</div>
+                    <div className="etiqueta-metrica">Fallas pendientes ({fallas.filter((f) => f.estado === 'Resuelta').length} resueltas)</div>
+                  </div>
+                  <div className="tarjeta-metrica">
+                    <div className="valor-metrica">{tareas.length}</div>
+                    <div className="etiqueta-metrica">Tareas en simulador móvil</div>
+                  </div>
+                </div>
+
+                <div className="cuadricula-contacto">
+                  <div className="tarjeta-cristal">
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>Estado del Sistema</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
+                      <div className="pildora-muestra">
+                        <span>Almacenamiento local (localStorage):</span>
+                        <strong style={{ marginLeft: 'auto' }}>Activo y sincronizado</strong>
+                      </div>
+                      <div className="pildora-muestra">
+                        <span>Formulario de contacto (Formspree):</span>
+                        <strong style={{ marginLeft: 'auto' }}>Conectado</strong>
+                      </div>
+                      <div className="pildora-muestra">
+                        <span>Cuentas registradas localmente:</span>
+                        <strong style={{ marginLeft: 'auto' }}>{cuentas.length} usuario(s)</strong>
+                      </div>
+                      <div className="pildora-muestra">
+                        <span>Banner de aviso global:</span>
+                        <strong style={{ marginLeft: 'auto' }}>{bannerAvisoAdmin.activo ? 'Visible' : 'Oculto'}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="tarjeta-cristal">
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>Acciones Rápidas</h3>
+                    <p style={{ fontSize: '0.84rem', marginBottom: '16px', lineHeight: 1.55 }}>
+                      Salta directamente a cualquier operación frecuente de administración:
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <button
+                        type="button"
+                        className="boton-primario"
+                        onClick={() => {
+                          cancelarEdicionPlan();
+                          setPestanaAdminCompleta('planes');
+                        }}
+                      >
+                        + Crear o editar planes del catálogo
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={() => setPestanaAdminCompleta('mensajes')}
+                      >
+                        Revisar bandeja de mensajes ({mensajesGuardados.filter((m) => !m.leido).length} sin leer)
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={() => setPestanaAdminCompleta('fallas')}
+                      >
+                        Registrar o actualizar reporte de fallas
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={descargarRespaldoAdmin}
+                      >
+                        Descargar respaldo JSON completo
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {pestanaAdminCompleta === 'planes' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                <div className="cuadricula-contacto">
+                  <div className="tarjeta-cristal">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <h3 style={{ fontSize: '1.15rem' }}>
+                        {indicePlanEditando !== null ? `Editando: ${planes[indicePlanEditando]?.nombre}` : 'Crear Nuevo Plan'}
+                      </h3>
+                      {indicePlanEditando !== null && (
+                        <button type="button" className="boton-secundario" style={{ padding: '5px 10px', fontSize: '0.75rem' }} onClick={cancelarEdicionPlan}>
+                          Cancelar edición
+                        </button>
+                      )}
+                    </div>
+
+                    <form onSubmit={guardarPlanAdmin}>
+                      <div className="grupo-campo">
+                        <label>Nombre del Plan</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formPlanAdmin.nombre}
+                          onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, nombre: e.target.value }))}
+                          placeholder="Ej: Plan Universitario"
+                          required
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="grupo-campo">
+                          <label>Precio Mensual (USD)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="campo-entrada"
+                            value={formPlanAdmin.precioMensual}
+                            onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, precioMensual: e.target.value }))}
+                            placeholder="Ej: 4.99"
+                            required
+                          />
+                        </div>
+                        <div className="grupo-campo">
+                          <label>Insignia / Etiqueta</label>
+                          <input
+                            type="text"
+                            className="campo-entrada"
+                            value={formPlanAdmin.insignia}
+                            onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, insignia: e.target.value }))}
+                            placeholder="Ej: Más Recomendado"
+                          />
+                        </div>
+                      </div>
+                      <div className="grupo-campo">
+                        <label>Descripción del Plan</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formPlanAdmin.descripcion}
+                          onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, descripcion: e.target.value }))}
+                          placeholder="Resumen breve de beneficios"
+                          required
+                        />
+                      </div>
+                      <div className="grupo-campo">
+                        <label>Herramienta Principal</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formPlanAdmin.herramientaEtiqueta}
+                          onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, herramientaEtiqueta: e.target.value }))}
+                          placeholder="Ej: Brain Dump IA Pro"
+                          required
+                        />
+                      </div>
+                      <div className="grupo-campo">
+                        <label>¿Qué es esta herramienta?</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formPlanAdmin.herramientaQueEs}
+                          onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, herramientaQueEs: e.target.value }))}
+                          placeholder="Explica su función principal"
+                          required
+                        />
+                      </div>
+                      <div className="grupo-campo">
+                        <label>Alcance o límite en este plan</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formPlanAdmin.herramientaOferta}
+                          onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, herramientaOferta: e.target.value }))}
+                          placeholder="Ej: Uso 100% ilimitado"
+                          required
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '16px', marginBottom: '14px', fontSize: '0.82rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={formPlanAdmin.destacado}
+                            onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, destacado: e.target.checked }))}
+                          />
+                          <span>Plan destacado</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={formPlanAdmin.activo}
+                            onChange={(e) => setFormPlanAdmin((prev) => ({ ...prev, activo: e.target.checked }))}
+                          />
+                          <span>Visible en catálogo público</span>
+                        </label>
+                      </div>
+
+                      <button type="submit" className="boton-primario" style={{ width: '100%' }}>
+                        {indicePlanEditando !== null ? 'Guardar Cambios del Plan' : 'Publicar Nuevo Plan'}
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="tarjeta-cristal">
+                    <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>Planes Existentes ({planes.length})</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '520px', overflowY: 'auto' }}>
+                      {planes.map((planItem, idx) => (
+                        <div
+                          key={planItem.nombre + idx}
+                          style={{
+                            background: 'rgba(3,4,10,0.65)',
+                            border: '1px solid rgba(157,78,221,0.32)',
+                            borderRadius: '14px',
+                            padding: '14px',
+                            fontSize: '0.83rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <strong>{planItem.nombre} — ${Number(planItem.precioMensual).toFixed(2)}/mes</strong>
+                            <span className={`insignia-estado ${planItem.activo !== false ? 'estado-resuelta' : 'estado-abierta'}`}>
+                              {planItem.activo !== false ? 'Visible' : 'Oculto'}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '0.78rem', marginBottom: '8px', opacity: 0.9 }}>{planItem.descripcion}</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                            {(planItem.herramientas || []).map((herr, hIdx) => (
+                              <span
+                                key={herr.etiqueta + hIdx}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  padding: '3px 8px',
+                                  borderRadius: '999px',
+                                  fontSize: '0.7rem',
+                                  background: 'rgba(157,78,221,0.2)',
+                                  border: '1px solid rgba(192,132,252,0.35)'
+                                }}
+                              >
+                                {herr.etiqueta}
+                                {(planItem.herramientas || []).length > 1 && (
+                                  <button
+                                    type="button"
+                                    aria-label="Quitar herramienta"
+                                    onClick={() => eliminarHerramientaDePlan(idx, hIdx)}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem' }}
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            <button
+                              type="button"
+                              className="boton-primario"
+                              style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                              onClick={() => iniciarEdicionPlan(idx)}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                              onClick={() => alternarVisibilidadPlan(idx)}
+                            >
+                              {planItem.activo !== false ? 'Ocultar' : 'Mostrar'}
+                            </button>
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                              onClick={() => eliminarPlan(idx)}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="tarjeta-cristal">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>Agregar Herramienta Adicional a un Plan</h3>
+                  <form onSubmit={agregarHerramientaAPlan} className="cuadricula-herramienta-extra">
+                    <select
+                      className="campo-entrada"
+                      value={nuevaHerramientaPlan.planIndice}
+                      onChange={(e) => setNuevaHerramientaPlan((prev) => ({ ...prev, planIndice: Number(e.target.value) }))}
+                    >
+                      {planes.map((p, idx) => (
+                        <option key={p.nombre + idx} value={idx}>
+                          {p.nombre}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      className="campo-entrada"
+                      placeholder="Nombre de herramienta"
+                      value={nuevaHerramientaPlan.etiqueta}
+                      onChange={(e) => setNuevaHerramientaPlan((prev) => ({ ...prev, etiqueta: e.target.value }))}
+                      required
+                    />
+                    <input
+                      type="text"
+                      className="campo-entrada"
+                      placeholder="¿Qué hace?"
+                      value={nuevaHerramientaPlan.queEs}
+                      onChange={(e) => setNuevaHerramientaPlan((prev) => ({ ...prev, queEs: e.target.value }))}
+                      required
+                    />
+                    <input
+                      type="text"
+                      className="campo-entrada"
+                      placeholder="Alcance o límite"
+                      value={nuevaHerramientaPlan.oferta}
+                      onChange={(e) => setNuevaHerramientaPlan((prev) => ({ ...prev, oferta: e.target.value }))}
+                      required
+                    />
+                    <button type="submit" className="boton-primario">
+                      + Añadir
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {pestanaAdminCompleta === 'mensajes' && (
+              <div className="tarjeta-cristal">
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '1.15rem' }}>
+                    Bandeja de Mensajes ({mensajesGuardados.length})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="campo-entrada"
+                      style={{ width: '220px' }}
+                      placeholder="Buscar por nombre, correo o tema..."
+                      value={busquedaMensajes}
+                      onChange={(e) => setBusquedaMensajes(e.target.value)}
+                    />
+                    <select
+                      className="campo-entrada"
+                      style={{ width: '160px' }}
+                      value={filtroMensajes}
+                      onChange={(e) => setFiltroMensajes(e.target.value)}
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="no_leidos">Sin leer</option>
+                      <option value="respondidos">Respondidos</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {(() => {
+                    const filtrados = mensajesGuardados
+                      .map((m, idxOriginal) => ({ ...m, idxOriginal }))
+                      .filter((m) => {
+                        if (filtroMensajes === 'no_leidos' && m.leido) return false;
+                        if (filtroMensajes === 'respondidos' && !m.respondido) return false;
+                        const q = busquedaMensajes.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          (m.nombre || '').toLowerCase().includes(q) ||
+                          (m.correo || '').toLowerCase().includes(q) ||
+                          (m.tema || '').toLowerCase().includes(q) ||
+                          (m.mensaje || '').toLowerCase().includes(q)
+                        );
+                      });
+
+                    if (filtrados.length === 0) {
+                      return (
+                        <p style={{ fontSize: '0.85rem' }}>
+                          No hay mensajes que coincidan con el filtro actual.
+                        </p>
+                      );
+                    }
+
+                    return filtrados.map((m) => (
+                      <div
+                        key={m.id || m.idxOriginal}
+                        style={{
+                          background: 'rgba(3,4,10,0.65)',
+                          border: '1px solid rgba(157,78,221,0.32)',
+                          borderRadius: '12px',
+                          padding: '14px',
+                          fontSize: '0.84rem'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                          <strong>{m.nombre} — {m.tema}</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span className={`insignia-estado ${m.leido ? 'estado-resuelta' : 'estado-abierta'}`}>
+                              {m.leido ? 'Leído' : 'Nuevo'}
+                            </span>
+                            {m.respondido && (
+                              <span className="insignia-estado estado-resuelta">Respondido</span>
+                            )}
+                            <span style={{ fontSize: '0.76rem' }}>{m.fecha}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>{m.correo}</div>
+                        <p style={{ lineHeight: 1.5, marginBottom: '10px' }}>{m.mensaje}</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="boton-secundario"
+                            style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                            onClick={() => alternarEstadoMensaje(m.idxOriginal, 'leido')}
+                          >
+                            {m.leido ? 'Marcar como no leído' : 'Marcar como leído'}
+                          </button>
+                          <button
+                            type="button"
+                            className="boton-secundario"
+                            style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                            onClick={() => alternarEstadoMensaje(m.idxOriginal, 'respondido')}
+                          >
+                            {m.respondido ? 'Desmarcar respondido' : 'Marcar respondido'}
+                          </button>
+                          <a
+                            href={`mailto:${m.correo}?subject=${encodeURIComponent('Respuesta Krono Do — ' + m.tema)}`}
+                            className="boton-primario"
+                            style={{ padding: '5px 10px', fontSize: '0.74rem', textDecoration: 'none' }}
+                          >
+                            Responder por correo
+                          </a>
+                          <button
+                            type="button"
+                            className="boton-secundario"
+                            style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                            onClick={() => eliminarMensajeGuardado(m.idxOriginal)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
 
             {pestanaAdminCompleta === 'fallas' && (
               <div className="cuadricula-contacto">
@@ -1296,6 +2014,7 @@ export default function App() {
                         <option value="Krono IA">Krono IA</option>
                         <option value="Contacto">Contacto</option>
                         <option value="Audio">Audio</option>
+                        <option value="Menú / Responsive">Menú / Responsive</option>
                       </select>
                     </div>
                     <div className="grupo-campo">
@@ -1311,7 +2030,7 @@ export default function App() {
                       </select>
                     </div>
                     <div className="grupo-campo">
-                      <label>Descripción del problema</label>
+                      <label>Descripción y pasos para reproducir</label>
                       <textarea
                         rows="4"
                         className="campo-entrada"
@@ -1328,12 +2047,61 @@ export default function App() {
                 </div>
 
                 <div className="tarjeta-cristal">
-                  <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>Fallas Registradas ({fallas.length})</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
-                    {fallas.length === 0 ? (
-                      <p style={{ color: '#ffffff', fontSize: '0.85rem' }}>No hay fallas registradas en este momento.</p>
-                    ) : (
-                      fallas.map((f) => (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '1.15rem' }}>Fallas Registradas ({fallas.length})</h3>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <input
+                        type="text"
+                        className="campo-entrada"
+                        style={{ width: '150px', padding: '6px 10px', fontSize: '0.78rem' }}
+                        placeholder="Filtrar texto..."
+                        value={busquedaFallas}
+                        onChange={(e) => setBusquedaFallas(e.target.value)}
+                      />
+                      <select
+                        className="campo-entrada"
+                        style={{ width: '115px', padding: '6px 10px', fontSize: '0.78rem' }}
+                        value={filtroPrioridadFallas}
+                        onChange={(e) => setFiltroPrioridadFallas(e.target.value)}
+                      >
+                        <option value="Todas">Prioridad: Todas</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Media">Media</option>
+                        <option value="Baja">Baja</option>
+                      </select>
+                      <select
+                        className="campo-entrada"
+                        style={{ width: '125px', padding: '6px 10px', fontSize: '0.78rem' }}
+                        value={filtroEstadoFallas}
+                        onChange={(e) => setFiltroEstadoFallas(e.target.value)}
+                      >
+                        <option value="Todos">Estado: Todos</option>
+                        <option value="Abierta">Abierta</option>
+                        <option value="En revisión">En revisión</option>
+                        <option value="Resuelta">Resuelta</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '480px', overflowY: 'auto' }}>
+                    {(() => {
+                      const fallasFiltradas = fallas.filter((f) => {
+                        if (filtroPrioridadFallas !== 'Todas' && f.prioridad !== filtroPrioridadFallas) return false;
+                        if (filtroEstadoFallas !== 'Todos' && f.estado !== filtroEstadoFallas) return false;
+                        const q = busquedaFallas.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          (f.titulo || '').toLowerCase().includes(q) ||
+                          (f.seccion || '').toLowerCase().includes(q) ||
+                          (f.descripcion || '').toLowerCase().includes(q)
+                        );
+                      });
+
+                      if (fallasFiltradas.length === 0) {
+                        return <p style={{ fontSize: '0.85rem' }}>No hay fallas con esos criterios.</p>;
+                      }
+
+                      return fallasFiltradas.map((f) => (
                         <div
                           key={f.id}
                           style={{
@@ -1345,23 +2113,48 @@ export default function App() {
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <strong style={{ color: '#ffffff' }}>{f.titulo}</strong>
+                            <strong>{f.titulo}</strong>
                             <span className={`insignia-estado ${f.estado === 'Resuelta' ? 'estado-resuelta' : 'estado-abierta'}`}>
                               {f.estado}
                             </span>
                           </div>
-                          <p style={{ color: '#ffffff', fontSize: '0.75rem', marginBottom: '6px' }}>
+                          <p style={{ fontSize: '0.75rem', marginBottom: '6px' }}>
                             Sección: {f.seccion} • Prioridad: {f.prioridad} • {f.fecha}
                           </p>
-                          <p style={{ color: '#ffffff', lineHeight: 1.45, marginBottom: '10px' }}>{f.descripcion}</p>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <p style={{ lineHeight: 1.45, marginBottom: '8px' }}>{f.descripcion}</p>
+                          {f.notaResolucion && (
+                            <p style={{ fontSize: '0.75rem', marginBottom: '8px', padding: '6px 9px', borderRadius: '8px', background: 'rgba(157,78,221,0.16)' }}>
+                              Nota técnica: {f.notaResolucion}
+                            </p>
+                          )}
+                          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                            <input
+                              type="text"
+                              className="campo-entrada"
+                              style={{ padding: '5px 9px', fontSize: '0.76rem' }}
+                              placeholder="Añadir nota técnica o solución..."
+                              value={notasResolucionFallas[f.id] ?? f.notaResolucion ?? ''}
+                              onChange={(e) =>
+                                setNotasResolucionFallas((prev) => ({ ...prev, [f.id]: e.target.value }))
+                              }
+                            />
                             <button
                               type="button"
                               className="boton-secundario"
-                              style={{ padding: '5px 10px', fontSize: '0.74rem' }}
-                              onClick={() => cambiarEstadoFalla(f.id)}
+                              style={{ padding: '5px 10px', fontSize: '0.74rem', whiteSpace: 'nowrap' }}
+                              onClick={() => guardarNotaFalla(f.id)}
                             >
-                              {f.estado === 'Abierta' ? 'Marcar Resuelta' : 'Reabrir'}
+                              Guardar nota
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            <button
+                              type="button"
+                              className="boton-primary boton-primario"
+                              style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                              onClick={() => avanzarEstadoFalla(f.id)}
+                            >
+                              Cambiar estado ({f.estado})
                             </button>
                             <button
                               type="button"
@@ -1373,63 +2166,89 @@ export default function App() {
                             </button>
                           </div>
                         </div>
-                      ))
-                    )}
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>
             )}
 
-            {pestanaAdminCompleta === 'mensajes' && (
-              <div className="tarjeta-cristal">
-                <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>
-                  Bandeja Completa de Mensajes ({mensajesGuardados.length})
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {mensajesGuardados.length === 0 ? (
-                    <p style={{ color: '#ffffff', fontSize: '0.85rem' }}>
-                      Aún no hay mensajes enviados desde el formulario de contacto.
-                    </p>
-                  ) : (
-                    mensajesGuardados.map((m, indice) => (
-                      <div
-                        key={indice}
-                        style={{
-                          background: 'rgba(3,4,10,0.65)',
-                          border: '1px solid rgba(157,78,221,0.3)',
-                          borderRadius: '12px',
-                          padding: '14px',
-                          fontSize: '0.84rem'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', fontWeight: 600, marginBottom: '4px' }}>
-                          <span>
-                            {m.nombre} ({m.tema})
-                          </span>
-                          <span>{m.fecha}</span>
-                        </div>
-                        <div style={{ color: '#ffffff', fontSize: '0.78rem', marginBottom: '6px' }}>{m.correo}</div>
-                        <p style={{ color: '#ffffff', lineHeight: 1.5 }}>{m.mensaje}</p>
-                      </div>
-                    ))
-                  )}
+            {pestanaAdminCompleta === 'configuracion' && (
+              <div className="cuadricula-contacto">
+                <div className="tarjeta-cristal">
+                  <h3 style={{ fontSize: '1.15rem', marginBottom: '12px' }}>Aviso Global en la Plataforma</h3>
+                  <p style={{ fontSize: '0.84rem', marginBottom: '14px', lineHeight: 1.55 }}>
+                    Muestra un cintillo informativo en la parte superior de Krono Do para anunciar novedades o mantenimientos.
+                  </p>
+                  <div className="grupo-campo">
+                    <label>Texto del anuncio</label>
+                    <input
+                      type="text"
+                      className="campo-entrada"
+                      value={bannerAvisoAdmin.texto}
+                      onChange={(e) => setBannerAvisoAdmin((prev) => ({ ...prev, texto: e.target.value }))}
+                      placeholder="Escribe un aviso para los visitantes..."
+                    />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={bannerAvisoAdmin.activo}
+                      onChange={(e) => setBannerAvisoAdmin((prev) => ({ ...prev, activo: e.target.checked }))}
+                    />
+                    <span>Activar cintillo de aviso en la web</span>
+                  </label>
                 </div>
-              </div>
-            )}
 
-            {pestanaAdminCompleta === 'resumen' && (
-              <div className="fila-metricas">
-                <div className="tarjeta-metrica">
-                  <div className="valor-metrica">{planes.length}</div>
-                  <div className="etiqueta-metrica">Planes activos en el catálogo</div>
-                </div>
-                <div className="tarjeta-metrica">
-                  <div className="valor-metrica">{tareas.length}</div>
-                  <div className="etiqueta-metrica">Tareas registradas en el simulador</div>
-                </div>
-                <div className="tarjeta-metrica">
-                  <div className="valor-metrica">{fallas.filter((f) => f.estado === 'Abierta').length}</div>
-                  <div className="etiqueta-metrica">Fallas abiertas por revisar</div>
+                <div className="tarjeta-cristal">
+                  <h3 style={{ fontSize: '1.15rem', marginBottom: '12px' }}>Respaldo y Restauración de Datos</h3>
+                  <p style={{ fontSize: '0.84rem', marginBottom: '16px', lineHeight: 1.55 }}>
+                    Exporta una copia de seguridad en JSON de todos tus planes, mensajes y fallas, o restablece los valores iniciales.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button type="button" className="boton-primario" onClick={descargarRespaldoAdmin}>
+                      Exportar Respaldo JSON
+                    </button>
+
+                    {!confirmarReinicioAdmin ? (
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={() => setConfirmarReinicioAdmin(true)}
+                      >
+                        Restablecer datos de demostración
+                      </button>
+                    ) : (
+                      <div style={{ padding: '12px', borderRadius: '12px', border: '1px solid rgba(192,132,252,0.45)', background: 'rgba(3,4,10,0.75)' }}>
+                        <p style={{ fontSize: '0.82rem', marginBottom: '10px' }}>
+                          ¿Confirmas que deseas restaurar los planes, tareas, fallas y mensajes a su estado inicial?
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="boton-primario"
+                            style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                            onClick={() => {
+                              reiniciarDatosDemo();
+                              setConfirmarReinicioAdmin(false);
+                              setMensajeSistemaAdmin('Datos restablecidos correctamente.');
+                              setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+                            }}
+                          >
+                            Sí, restablecer
+                          </button>
+                          <button
+                            type="button"
+                            className="boton-secundario"
+                            style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                            onClick={() => setConfirmarReinicioAdmin(false)}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1764,7 +2583,7 @@ export default function App() {
               </div>
 
               <div className="cuadricula-catalogo">
-                {planes.map((plan, pIndice) => {
+                {planes.filter((plan) => plan.activo !== false).map((plan, pIndice) => {
                   const indiceHerramientaActiva = herramientasSeleccionadas[pIndice] ?? 0;
                   const herramientaActiva = plan.herramientas[indiceHerramientaActiva] || plan.herramientas[0];
                   const precio =
@@ -2008,120 +2827,95 @@ export default function App() {
 
             {rol === 'Admin' && (
               <section id="admin-panel">
-                <span className="etiqueta-seccion">Panel de Administración</span>
-                <h2 className="titulo-seccion">Gestión de Catálogo y Mensajes</h2>
+                <span className="etiqueta-seccion">Vista Rápida de Administración</span>
+                <h2 className="titulo-seccion">Mensajes Recibidos y Fallas</h2>
                 <p className="subtitulo-seccion">
-                  Sesión administrativa activa. Los cambios que publiques aquí se guardan automáticamente y se reflejan en el catálogo.
+                  Vista de observación rápida. Para editar, filtrar o gestionar todas las áreas, abre el panel completo.
                 </p>
 
                 <div className="cuadricula-contacto">
                   <div className="tarjeta-cristal">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>Agregar Nuevo Plan al Catálogo</h3>
-                    <form onSubmit={agregarPlan}>
-                      <div className="grupo-campo">
-                        <label>Nombre del Plan</label>
-                        <input
-                          type="text"
-                          className="campo-entrada"
-                          value={nuevoPlan.nombre}
-                          onChange={(e) => setNuevoPlan((prev) => ({ ...prev, nombre: e.target.value }))}
-                          placeholder="Ej: Plan Universitario"
-                          required
-                        />
-                      </div>
-                      <div className="grupo-campo">
-                        <label>Precio Mensual (USD)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="campo-entrada"
-                          value={nuevoPlan.precio}
-                          onChange={(e) => setNuevoPlan((prev) => ({ ...prev, precio: e.target.value }))}
-                          placeholder="Ej: 2.99"
-                          required
-                        />
-                      </div>
-                      <div className="grupo-campo">
-                        <label>Descripción corta</label>
-                        <input
-                          type="text"
-                          className="campo-entrada"
-                          value={nuevoPlan.descripcion}
-                          onChange={(e) => setNuevoPlan((prev) => ({ ...prev, descripcion: e.target.value }))}
-                          placeholder="Ideal para estudiantes activos"
-                          required
-                        />
-                      </div>
-                      <div className="grupo-campo">
-                        <label>Herramienta destacada (Botón)</label>
-                        <input
-                          type="text"
-                          className="campo-entrada"
-                          value={nuevoPlan.herramienta}
-                          onChange={(e) => setNuevoPlan((prev) => ({ ...prev, herramienta: e.target.value }))}
-                          placeholder="Ej: Modo Exámenes IA"
-                          required
-                        />
-                      </div>
-                      <div className="grupo-campo">
-                        <label>Detalle de la herramienta</label>
-                        <input
-                          type="text"
-                          className="campo-entrada"
-                          value={nuevoPlan.infoHerramienta}
-                          onChange={(e) => setNuevoPlan((prev) => ({ ...prev, infoHerramienta: e.target.value }))}
-                          placeholder="Genera cronogramas de repaso antes de parciales."
-                          required
-                        />
-                      </div>
-                      <button type="submit" className="boton-primario" style={{ width: '100%' }}>
-                        Publicar en Catálogo
-                      </button>
-                    </form>
-                  </div>
-
-                  <div className="tarjeta-cristal" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>
-                        Mensajes Recibidos ({mensajesGuardados.length})
-                      </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
-                        {mensajesGuardados.length === 0 ? (
-                          <p style={{ color: '#ffffff', fontSize: '0.85rem' }}>
-                            Aún no hay mensajes enviados desde el formulario.
-                          </p>
-                        ) : (
-                          mensajesGuardados.map((m, indice) => (
-                            <div
-                              key={indice}
-                              style={{
-                                background: 'rgba(3,4,10,0.65)',
-                                border: '1px solid rgba(157,78,221,0.3)',
-                                borderRadius: '12px',
-                                padding: '12px',
-                                fontSize: '0.82rem'
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', fontWeight: 600, marginBottom: '4px' }}>
-                                <span>
-                                  {m.nombre} ({m.tema})
-                                </span>
-                                <span>{m.fecha}</span>
-                              </div>
-                              <div style={{ color: '#ffffff', fontSize: '0.76rem', marginBottom: '6px' }}>{m.correo}</div>
-                              <p style={{ color: '#ffffff', lineHeight: 1.45 }}>{m.mensaje}</p>
+                    <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>
+                      Mensajes Recibidos ({mensajesGuardados.length})
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                      {mensajesGuardados.length === 0 ? (
+                        <p style={{ fontSize: '0.85rem' }}>
+                          Aún no hay mensajes enviados desde el formulario.
+                        </p>
+                      ) : (
+                        mensajesGuardados.map((m, indice) => (
+                          <div
+                            key={m.id || indice}
+                            style={{
+                              background: 'rgba(3,4,10,0.65)',
+                              border: '1px solid rgba(157,78,221,0.3)',
+                              borderRadius: '12px',
+                              padding: '12px',
+                              fontSize: '0.82rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: '4px' }}>
+                              <span>
+                                {m.nombre} ({m.tema})
+                              </span>
+                              <span>{m.fecha}</span>
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                      <button type="button" className="boton-primario" style={{ width: '100%' }} onClick={abrirAdminCompleto}>
-                        Abrir Panel de Administración Completo
-                      </button>
+                            <div style={{ fontSize: '0.76rem', marginBottom: '6px' }}>{m.correo}</div>
+                            <p style={{ lineHeight: 1.45 }}>{m.mensaje}</p>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
+
+                  <div className="tarjeta-cristal">
+                    <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>
+                      Fallas Registradas ({fallas.length})
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                      {fallas.length === 0 ? (
+                        <p style={{ fontSize: '0.85rem' }}>
+                          No hay fallas registradas en este momento.
+                        </p>
+                      ) : (
+                        fallas.map((f) => (
+                          <div
+                            key={f.id}
+                            style={{
+                              background: 'rgba(3,4,10,0.65)',
+                              border: '1px solid rgba(157,78,221,0.3)',
+                              borderRadius: '12px',
+                              padding: '12px',
+                              fontSize: '0.82rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <strong>{f.titulo}</strong>
+                              <span className={`insignia-estado ${f.estado === 'Resuelta' ? 'estado-resuelta' : 'estado-abierta'}`}>
+                                {f.estado}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', marginBottom: '6px' }}>
+                              Sección: {f.seccion} • Prioridad: {f.prioridad} • {f.fecha}
+                            </div>
+                            <p style={{ lineHeight: 1.45 }}>{f.descripcion}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className="boton-primario"
+                    style={{ width: '100%', maxWidth: '460px' }}
+                    onClick={abrirAdminCompleto}
+                  >
+                    Abrir Panel de Administración Completo
+                  </button>
                 </div>
               </section>
             )}

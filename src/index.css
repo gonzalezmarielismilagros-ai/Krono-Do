@@ -1246,3 +1246,56 @@ footer .img-logo-marca {
     display: none;
   }
 }
+
+/* Panel de Administración Completo y cintillo de aviso */
+.banner-aviso-global {
+  margin-bottom: 18px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(11, 46, 138, 0.55), rgba(90, 24, 154, 0.55));
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.alerta-sistema-admin {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(157, 78, 221, 0.24);
+  border: 1px solid rgba(192, 132, 252, 0.55);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.cuadricula-kpis-admin {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .cuadricula-kpis-admin {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .cuadricula-kpis-admin {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cuadricula-herramienta-extra {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr 1.2fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 960px) {
+  .cuadricula-herramienta-extra {
+    grid-template-columns: 1fr;
+  }
+}
