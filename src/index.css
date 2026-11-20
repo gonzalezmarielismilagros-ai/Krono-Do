@@ -1063,6 +1063,7 @@ footer .img-logo-marca {
   border: 1px solid var(--morado-vivo);
 }
 
+/* Menú hamburguesa y barra responsive */
 .grupo-izquierdo-nav {
   display: flex;
   align-items: center;
@@ -1135,7 +1136,7 @@ footer .img-logo-marca {
   padding-top: 11px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .boton-hamburguesa-nav {
     display: inline-flex;
   }
@@ -1159,12 +1160,12 @@ footer .img-logo-marca {
     max-width: 118px;
   }
 
-  .acciones-nav {
+  .acciones-usuario-nav {
     gap: 6px;
     flex-shrink: 0;
   }
 
-  .insignia-rol-nav,
+  .insignia-usuario,
   .boton-cambiar-cuenta {
     padding: 6px 9px;
     font-size: 0.74rem;

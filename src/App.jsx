@@ -214,7 +214,6 @@ export default function App() {
   const recorridoCompletado = leerAlmacenamiento(CLAVES_ALMACENAMIENTO.recorridoListo, false);
 
   const [vistaActiva, setVistaActiva] = useState('inicio');
-  const [menuHamburguesaAbierto, setMenuHamburguesaAbierto] = useState(false);
   const [pestanaAdminCompleta, setPestanaAdminCompleta] = useState('fallas');
   const [fotoFundadoraFaltante, setFotoFundadoraFaltante] = useState(false);
 
@@ -231,6 +230,7 @@ export default function App() {
     leerAlmacenamiento(CLAVES_ALMACENAMIENTO.usuarioActual, null)
   );
   const [rol, setRol] = useState(() => leerAlmacenamiento(CLAVES_ALMACENAMIENTO.rol, 'Invitado'));
+  const [menuHamburguesaAbierto, setMenuHamburguesaAbierto] = useState(false);
 
   const [pantallaCelular, setPantallaCelular] = useState('ahora');
   const [energia, setEnergia] = useState('alta');
@@ -324,41 +324,6 @@ export default function App() {
         return prev - 1;
       });
     }, 1000);
-
-  const navegarDesdeMenu = (seccionId, vistaEspecial = 'inicio') => {
-    setMenuHamburguesaAbierto(false);
-
-    if (vistaEspecial === 'adminCompleto') {
-      if (typeof abrirAdminCompleto === 'function') {
-        abrirAdminCompleto();
-      }
-      return;
-    }
-
-    if (seccionId === 'admin-panel' && typeof vistaActiva !== 'undefined' && vistaActiva !== 'inicio') {
-      if (typeof setVistaActiva === 'function') {
-        setVistaActiva('inicio');
-      }
-      setTimeout(() => {
-        if (typeof irASeccion === 'function') {
-          irASeccion('admin-panel');
-        } else {
-          document.getElementById('admin-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 60);
-      return;
-    }
-
-    if (typeof irASeccion === 'function') {
-      irASeccion(seccionId);
-    } else {
-      const destino = document.getElementById(seccionId);
-      if (destino) {
-        destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-  };
-
     return () => clearInterval(intervalo);
   }, [temporizadorActivo]);
 
@@ -392,6 +357,34 @@ export default function App() {
   const abrirAdminCompleto = () => {
     setVistaActiva('adminCompleto');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navegarDesdeMenu = (seccionId, vistaEspecial = 'inicio') => {
+    setMenuHamburguesaAbierto(false);
+
+    if (vistaEspecial === 'adminCompleto') {
+      abrirAdminCompleto();
+      return;
+    }
+
+    if (seccionId === 'admin-panel' && vistaActiva !== 'inicio') {
+      setVistaActiva('inicio');
+      setTimeout(() => {
+        const destino = document.getElementById('admin-panel');
+        if (destino) destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+      return;
+    }
+
+    irASeccion(seccionId);
+    setTimeout(() => {
+      const destino = document.getElementById(seccionId);
+      if (destino) {
+        destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (seccionId === 'inicio') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 60);
   };
 
   const terminarRecorrido = () => {
@@ -967,34 +960,37 @@ export default function App() {
       )}
 
       <div className="contenedor-barra-superior">
-        <nav className="barra-navegacion">
-          <button
-          type="button"
-          className="boton-hamburguesa-nav"
-          aria-label={menuHamburguesaAbierto ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
-          aria-expanded={menuHamburguesaAbierto}
-          onClick={() => setMenuHamburguesaAbierto((prev) => !prev)}
-        >
-          {menuHamburguesaAbierto ? '✕' : '☰'}
-        </button>
-        <a
-            href="#inicio"
-            className="caja-logo-nav"
-            aria-label="Krono Do Inicio"
-            onClick={(e) => {
-              e.preventDefault();
-              irASeccion('inicio');
-            }}
-          >
-            <img src="/logo.png" alt="Krono Do" className="img-logo-marca" />
-          </a>
+        <nav className="barra-navegacion" aria-label="Navegación principal">
+          <div className="grupo-izquierdo-nav">
+            <button
+              type="button"
+              className="boton-hamburguesa-nav"
+              aria-label={menuHamburguesaAbierto ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+              aria-expanded={menuHamburguesaAbierto}
+              onClick={() => setMenuHamburguesaAbierto((prev) => !prev)}
+            >
+              {menuHamburguesaAbierto ? '✕' : '☰'}
+            </button>
+
+            <a
+              href="#inicio"
+              className="caja-logo-nav"
+              aria-label="Krono Do Inicio"
+              onClick={(e) => {
+                e.preventDefault();
+                navegarDesdeMenu('inicio');
+              }}
+            >
+              <img src="/logo.png" alt="Krono Do" className="img-logo-marca" />
+            </a>
+          </div>
 
           <div className="enlaces-nav">
             <a
               href="#inicio"
               onClick={(e) => {
                 e.preventDefault();
-                irASeccion('inicio');
+                navegarDesdeMenu('inicio');
               }}
             >
               Inicio
@@ -1003,7 +999,7 @@ export default function App() {
               href="#metodologia"
               onClick={(e) => {
                 e.preventDefault();
-                irASeccion('metodologia');
+                navegarDesdeMenu('metodologia');
               }}
             >
               Cómo Funciona
@@ -1012,7 +1008,7 @@ export default function App() {
               href="#catalogo"
               onClick={(e) => {
                 e.preventDefault();
-                irASeccion('catalogo');
+                navegarDesdeMenu('catalogo');
               }}
             >
               Catálogo
@@ -1021,7 +1017,7 @@ export default function App() {
               href="#krono-ia"
               onClick={(e) => {
                 e.preventDefault();
-                irASeccion('krono-ia');
+                navegarDesdeMenu('krono-ia');
               }}
             >
               Krono IA
@@ -1030,17 +1026,17 @@ export default function App() {
               href="#contacto"
               onClick={(e) => {
                 e.preventDefault();
-                irASeccion('contacto');
+                navegarDesdeMenu('contacto');
               }}
             >
               Contacto
             </a>
-            {rol === 'Admin' && (
+            {(rol === 'Admin' || vistaActiva === 'adminCompleto') && (
               <a
                 href="#admin-panel"
                 onClick={(e) => {
                   e.preventDefault();
-                  irASeccion('admin-panel');
+                  navegarDesdeMenu('admin-panel');
                 }}
               >
                 Admin
@@ -1060,6 +1056,7 @@ export default function App() {
               type="button"
               className="boton-cambiar-cuenta"
               onClick={() => {
+                setMenuHamburguesaAbierto(false);
                 setMensajeErrorAcceso('');
                 setModoAcceso('login');
                 setMostrarInicioSesion(true);
@@ -1075,60 +1072,60 @@ export default function App() {
           </div>
         </nav>
 
-            {menuHamburguesaAbierto && (
-        <div className="ventana-menu-hamburguesa" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            className="item-menu-hamburguesa"
-            onClick={() => navegarDesdeMenu('inicio')}
-          >
-            Inicio
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="item-menu-hamburguesa"
-            onClick={() => navegarDesdeMenu('metodologia')}
-          >
-            Cómo funciona
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="item-menu-hamburguesa"
-            onClick={() => navegarDesdeMenu('catalogo')}
-          >
-            Catálogo
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="item-menu-hamburguesa"
-            onClick={() => navegarDesdeMenu('krono-ia')}
-          >
-            Krono IA
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="item-menu-hamburguesa"
-            onClick={() => navegarDesdeMenu('contacto')}
-          >
-            Contacto
-          </button>
-          {(rol === 'Admin' || vistaActiva === 'adminCompleto') && (
+        {menuHamburguesaAbierto && (
+          <div className="ventana-menu-hamburguesa" role="menu">
             <button
               type="button"
               role="menuitem"
-              className="item-menu-hamburguesa destacado"
-              onClick={() => navegarDesdeMenu('admin-panel')}
+              className="item-menu-hamburguesa"
+              onClick={() => navegarDesdeMenu('inicio')}
             >
-              Admin
+              Inicio
             </button>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              className="item-menu-hamburguesa"
+              onClick={() => navegarDesdeMenu('metodologia')}
+            >
+              Cómo funciona
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="item-menu-hamburguesa"
+              onClick={() => navegarDesdeMenu('catalogo')}
+            >
+              Catálogo
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="item-menu-hamburguesa"
+              onClick={() => navegarDesdeMenu('krono-ia')}
+            >
+              Krono IA
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="item-menu-hamburguesa"
+              onClick={() => navegarDesdeMenu('contacto')}
+            >
+              Contacto
+            </button>
+            {(rol === 'Admin' || vistaActiva === 'adminCompleto') && (
+              <button
+                type="button"
+                role="menuitem"
+                className="item-menu-hamburguesa destacado"
+                onClick={() => navegarDesdeMenu('admin-panel')}
+              >
+                Admin
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <main className="contenedor-principal">
