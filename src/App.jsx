@@ -327,11 +327,36 @@ export default function App() {
 
   const navegarDesdeMenu = (seccionId, vistaEspecial = 'inicio') => {
     setMenuHamburguesaAbierto(false);
+
     if (vistaEspecial === 'adminCompleto') {
-      abrirAdminCompleto();
+      if (typeof abrirAdminCompleto === 'function') {
+        abrirAdminCompleto();
+      }
       return;
     }
-    irASeccion(seccionId);
+
+    if (seccionId === 'admin-panel' && typeof vistaActiva !== 'undefined' && vistaActiva !== 'inicio') {
+      if (typeof setVistaActiva === 'function') {
+        setVistaActiva('inicio');
+      }
+      setTimeout(() => {
+        if (typeof irASeccion === 'function') {
+          irASeccion('admin-panel');
+        } else {
+          document.getElementById('admin-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 60);
+      return;
+    }
+
+    if (typeof irASeccion === 'function') {
+      irASeccion(seccionId);
+    } else {
+      const destino = document.getElementById(seccionId);
+      if (destino) {
+        destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   };
 
     return () => clearInterval(intervalo);
@@ -1050,25 +1075,55 @@ export default function App() {
           </div>
         </nav>
 
-      {menuHamburguesaAbierto && (
+            {menuHamburguesaAbierto && (
         <div className="ventana-menu-hamburguesa" role="menu">
-          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('inicio')}>
+          <button
+            type="button"
+            role="menuitem"
+            className="item-menu-hamburguesa"
+            onClick={() => navegarDesdeMenu('inicio')}
+          >
             Inicio
           </button>
-          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('como-funciona')}>
+          <button
+            type="button"
+            role="menuitem"
+            className="item-menu-hamburguesa"
+            onClick={() => navegarDesdeMenu('metodologia')}
+          >
             Cómo funciona
           </button>
-          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('catalogo')}>
+          <button
+            type="button"
+            role="menuitem"
+            className="item-menu-hamburguesa"
+            onClick={() => navegarDesdeMenu('catalogo')}
+          >
             Catálogo
           </button>
-          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('krono-ia')}>
+          <button
+            type="button"
+            role="menuitem"
+            className="item-menu-hamburguesa"
+            onClick={() => navegarDesdeMenu('krono-ia')}
+          >
             Krono IA
           </button>
-          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('contacto')}>
+          <button
+            type="button"
+            role="menuitem"
+            className="item-menu-hamburguesa"
+            onClick={() => navegarDesdeMenu('contacto')}
+          >
             Contacto
           </button>
           {(rol === 'Admin' || vistaActiva === 'adminCompleto') && (
-            <button type="button" role="menuitem" className="item-menu-hamburguesa destacado" onClick={() => navegarDesdeMenu('admin-panel')}>
+            <button
+              type="button"
+              role="menuitem"
+              className="item-menu-hamburguesa destacado"
+              onClick={() => navegarDesdeMenu('admin-panel')}
+            >
               Admin
             </button>
           )}
