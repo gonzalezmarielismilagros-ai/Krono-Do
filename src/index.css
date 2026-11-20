@@ -1063,7 +1063,7 @@ footer .img-logo-marca {
   border: 1px solid var(--morado-vivo);
 }
 
-/* Menú hamburguesa y barra responsive */
+/* Menú hamburguesa, cierre al tocar afuera y diseño de celular */
 .grupo-izquierdo-nav {
   display: flex;
   align-items: center;
@@ -1136,6 +1136,16 @@ footer .img-logo-marca {
   padding-top: 11px;
 }
 
+.cerrar-sesion-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fca5a5;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 2px;
+  padding-top: 11px;
+}
+
 @media (max-width: 960px) {
   .boton-hamburguesa-nav {
     display: inline-flex;
@@ -1173,22 +1183,15 @@ footer .img-logo-marca {
   }
 }
 
-/* Ajustes específicos para vista de celular */
-.cerrar-sesion-menu {
-  color: #fca5a5;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin-top: 2px;
-  padding-top: 11px;
-}
-
 @media (max-width: 720px) {
   .boton-cambiar-cuenta-escritorio {
     display: none;
   }
 
   .widget-musica-flotante {
-    left: 14px;
-    bottom: 148px;
+    left: auto;
+    right: 14px;
+    bottom: 118px;
     flex-direction: column;
     width: 44px;
     height: auto;

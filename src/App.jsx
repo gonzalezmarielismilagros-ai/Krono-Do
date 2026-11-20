@@ -284,6 +284,7 @@ export default function App() {
   const [reproduciendoMusica, setReproduciendoMusica] = useState(false);
   const [volumen, setVolumen] = useState(35);
   const refAudio = useRef(null);
+  const refBarraSuperior = useRef(null);
 
   useEffect(() => {
     guardarAlmacenamiento(CLAVES_ALMACENAMIENTO.planes, planes);
@@ -326,6 +327,24 @@ export default function App() {
     }, 1000);
     return () => clearInterval(intervalo);
   }, [temporizadorActivo]);
+
+  useEffect(() => {
+    if (!menuHamburguesaAbierto) return;
+
+    const manejarClicAfuera = (evento) => {
+      if (refBarraSuperior.current && !refBarraSuperior.current.contains(evento.target)) {
+        setMenuHamburguesaAbierto(false);
+      }
+    };
+
+    document.addEventListener('mousedown', manejarClicAfuera);
+    document.addEventListener('touchstart', manejarClicAfuera);
+
+    return () => {
+      document.removeEventListener('mousedown', manejarClicAfuera);
+      document.removeEventListener('touchstart', manejarClicAfuera);
+    };
+  }, [menuHamburguesaAbierto]);
 
   useEffect(() => {
     const audio = new Audio('/musica.mp3');
@@ -966,7 +985,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="contenedor-barra-superior">
+      <div className="contenedor-barra-superior" ref={refBarraSuperior}>
         <nav className="barra-navegacion" aria-label="Navegación principal">
           <div className="grupo-izquierdo-nav">
             <button
@@ -1132,7 +1151,12 @@ export default function App() {
               className="item-menu-hamburguesa cerrar-sesion-menu"
               onClick={cerrarSesion}
             >
-              Cerrar sesión
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>Cerrar sesión</span>
             </button>
           </div>
         )}
@@ -2261,8 +2285,9 @@ export default function App() {
             display: none !important;
           }
           .widget-musica-flotante {
-            left: 14px !important;
-            bottom: 148px !important;
+            left: auto !important;
+            right: 14px !important;
+            bottom: 118px !important;
             flex-direction: column !important;
             width: 44px !important;
             height: auto !important;
