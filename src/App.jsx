@@ -359,6 +359,13 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const cerrarSesion = () => {
+    setMenuHamburguesaAbierto(false);
+    setMensajeErrorAcceso('');
+    setModoAcceso('login');
+    setMostrarInicioSesion(true);
+  };
+
   const navegarDesdeMenu = (seccionId, vistaEspecial = 'inicio') => {
     setMenuHamburguesaAbierto(false);
 
@@ -1054,13 +1061,8 @@ export default function App() {
             </span>
             <button
               type="button"
-              className="boton-cambiar-cuenta"
-              onClick={() => {
-                setMenuHamburguesaAbierto(false);
-                setMensajeErrorAcceso('');
-                setModoAcceso('login');
-                setMostrarInicioSesion(true);
-              }}
+              className="boton-cambiar-cuenta boton-cambiar-cuenta-escritorio"
+              onClick={cerrarSesion}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -1124,6 +1126,14 @@ export default function App() {
                 Admin
               </button>
             )}
+            <button
+              type="button"
+              role="menuitem"
+              className="item-menu-hamburguesa cerrar-sesion-menu"
+              onClick={cerrarSesion}
+            >
+              Cerrar sesión
+            </button>
           </div>
         )}
       </div>
@@ -2106,11 +2116,23 @@ export default function App() {
       </footer>
 
       <div className="widget-musica-flotante">
-        <button type="button" className="boton-musica" onClick={alternarMusica}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
-          <span>{reproduciendoMusica ? 'Pausar' : 'Música'}</span>
+        <button
+          type="button"
+          className="boton-musica"
+          onClick={alternarMusica}
+          aria-label={reproduciendoMusica ? 'Pausar música' : 'Reproducir música'}
+        >
+          {reproduciendoMusica ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="4" width="4" height="16" />
+              <rect x="14" y="4" width="4" height="16" />
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          )}
+          <span className="texto-boton-musica">{reproduciendoMusica ? 'Pausar' : 'Música'}</span>
         </button>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e9d5ff" strokeWidth="2">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -2134,6 +2156,7 @@ export default function App() {
           target="_blank"
           rel="noreferrer"
           className="boton-tienda-flotante"
+          aria-label="Google Play"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
             <path d="M3.6 2.3L14.7 12L3.6 21.7C3.2 21.4 3 20.9 3 20.3V3.7C3 3.1 3.2 2.6 3.6 2.3Z" fill="#32BBFF" />
@@ -2141,7 +2164,7 @@ export default function App() {
             <path d="M3.6 2.3L18.4 8.7L14.7 12L3.6 2.3Z" fill="#00F076" />
             <path d="M3.6 21.7L14.7 12L18.4 15.3L3.6 21.7Z" fill="#FF3A44" />
           </svg>
-          <span>Google Play</span>
+          <span className="texto-tienda-movil">Google Play</span>
         </a>
 
         <a
@@ -2149,11 +2172,12 @@ export default function App() {
           target="_blank"
           rel="noreferrer"
           className="boton-tienda-flotante"
+          aria-label="App Store"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffffff">
             <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z" />
           </svg>
-          <span>App Store</span>
+          <span className="texto-tienda-movil">App Store</span>
         </a>
       </div>
 
@@ -2233,9 +2257,60 @@ export default function App() {
           background: rgba(34, 20, 74, 0.84);
         }
         @media (max-width: 720px) {
+          .boton-cambiar-cuenta-escritorio {
+            display: none !important;
+          }
+          .widget-musica-flotante {
+            left: 14px !important;
+            bottom: 148px !important;
+            flex-direction: column !important;
+            width: 44px !important;
+            height: auto !important;
+            min-height: 0 !important;
+            padding: 10px 6px !important;
+            border-radius: 22px !important;
+            gap: 8px !important;
+          }
+          .widget-musica-flotante .boton-musica {
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            justify-content: center !important;
+          }
+          .widget-musica-flotante .texto-boton-musica {
+            display: none !important;
+          }
+          .widget-musica-flotante .control-volumen {
+            writing-mode: vertical-lr !important;
+            direction: rtl !important;
+            width: 18px !important;
+            height: 68px !important;
+          }
+          .widget-musica-flotante .etiqueta-volumen {
+            font-size: 0.65rem !important;
+            min-width: 0 !important;
+            text-align: center !important;
+          }
           .tiendas-flotantes-derecha {
-            right: 12px;
-            bottom: 66px;
+            right: 14px !important;
+            bottom: 18px !important;
+            left: auto !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            gap: 8px !important;
+            height: auto !important;
+            width: auto !important;
+          }
+          .tiendas-flotantes-derecha .boton-tienda-flotante {
+            width: 44px !important;
+            height: 44px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            justify-content: center !important;
+          }
+          .tiendas-flotantes-derecha .texto-tienda-movil {
+            display: none !important;
           }
         }
       `}</style>

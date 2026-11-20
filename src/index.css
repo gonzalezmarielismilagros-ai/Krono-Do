@@ -1172,3 +1172,74 @@ footer .img-logo-marca {
     white-space: nowrap;
   }
 }
+
+/* Ajustes específicos para vista de celular */
+.cerrar-sesion-menu {
+  color: #fca5a5;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 2px;
+  padding-top: 11px;
+}
+
+@media (max-width: 720px) {
+  .boton-cambiar-cuenta-escritorio {
+    display: none;
+  }
+
+  .widget-musica-flotante {
+    left: 14px;
+    bottom: 148px;
+    flex-direction: column;
+    width: 44px;
+    height: auto;
+    min-height: 0;
+    padding: 10px 6px;
+    border-radius: 22px;
+    gap: 8px;
+  }
+
+  .widget-musica-flotante .boton-musica {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .widget-musica-flotante .texto-boton-musica {
+    display: none;
+  }
+
+  .widget-musica-flotante .control-volumen {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 18px;
+    height: 68px;
+  }
+
+  .widget-musica-flotante .etiqueta-volumen {
+    font-size: 0.65rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .tiendas-flotantes-derecha {
+    right: 14px;
+    bottom: 18px;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    height: auto;
+  }
+
+  .tiendas-flotantes-derecha .boton-tienda-flotante {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .tiendas-flotantes-derecha .texto-tienda-movil {
+    display: none;
+  }
+}
