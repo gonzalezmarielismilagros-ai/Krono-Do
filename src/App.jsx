@@ -214,6 +214,7 @@ export default function App() {
   const recorridoCompletado = leerAlmacenamiento(CLAVES_ALMACENAMIENTO.recorridoListo, false);
 
   const [vistaActiva, setVistaActiva] = useState('inicio');
+  const [menuHamburguesaAbierto, setMenuHamburguesaAbierto] = useState(false);
   const [pestanaAdminCompleta, setPestanaAdminCompleta] = useState('fallas');
   const [fotoFundadoraFaltante, setFotoFundadoraFaltante] = useState(false);
 
@@ -323,6 +324,16 @@ export default function App() {
         return prev - 1;
       });
     }, 1000);
+
+  const navegarDesdeMenu = (seccionId, vistaEspecial = 'inicio') => {
+    setMenuHamburguesaAbierto(false);
+    if (vistaEspecial === 'adminCompleto') {
+      abrirAdminCompleto();
+      return;
+    }
+    irASeccion(seccionId);
+  };
+
     return () => clearInterval(intervalo);
   }, [temporizadorActivo]);
 
@@ -932,7 +943,16 @@ export default function App() {
 
       <div className="contenedor-barra-superior">
         <nav className="barra-navegacion">
-          <a
+          <button
+          type="button"
+          className="boton-hamburguesa-nav"
+          aria-label={menuHamburguesaAbierto ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+          aria-expanded={menuHamburguesaAbierto}
+          onClick={() => setMenuHamburguesaAbierto((prev) => !prev)}
+        >
+          {menuHamburguesaAbierto ? '✕' : '☰'}
+        </button>
+        <a
             href="#inicio"
             className="caja-logo-nav"
             aria-label="Krono Do Inicio"
@@ -1029,6 +1049,31 @@ export default function App() {
             </button>
           </div>
         </nav>
+
+      {menuHamburguesaAbierto && (
+        <div className="ventana-menu-hamburguesa" role="menu">
+          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('inicio')}>
+            Inicio
+          </button>
+          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('como-funciona')}>
+            Cómo funciona
+          </button>
+          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('catalogo')}>
+            Catálogo
+          </button>
+          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('krono-ia')}>
+            Krono IA
+          </button>
+          <button type="button" role="menuitem" className="item-menu-hamburguesa" onClick={() => navegarDesdeMenu('contacto')}>
+            Contacto
+          </button>
+          {(rol === 'Admin' || vistaActiva === 'adminCompleto') && (
+            <button type="button" role="menuitem" className="item-menu-hamburguesa destacado" onClick={() => navegarDesdeMenu('admin-panel')}>
+              Admin
+            </button>
+          )}
+        </div>
+      )}
       </div>
 
       <main className="contenedor-principal">
