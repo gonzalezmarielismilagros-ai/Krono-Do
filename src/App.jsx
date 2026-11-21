@@ -8,8 +8,25 @@ const CLAVES_ALMACENAMIENTO = {
   rol: 'kronodo_rol_v1',
   usuarioActual: 'kronodo_usuario_actual_v1',
   cuentas: 'kronodo_cuentas_v1',
-  recorridoListo: 'kronodo_recorrido_listo_v1'
+  recorridoListo: 'kronodo_recorrido_listo_v1',
+  equipo: 'kronodo_equipo_v1'
 };
+
+const EQUIPO_INICIAL = [
+  {
+    id: 'founder-milagros',
+    cargo: 'Founder de Krono Do',
+    nombre: 'Milagros González',
+    descripcionCorta: 'Fundadora de Krono Do • STEM, Innovación y Liderazgo con Propósito',
+    biografia:
+      'Soy Milagros González, una joven panameña apasionada por el mundo STEM, la innovación y el liderazgo con propósito. A lo largo de mi camino en programas como She Is Astronauta, Technovation Girls, Jóvenes CreaTIvos e Innova-Nation, he desarrollado herramientas técnicas y de trabajo en equipo, pero ha sido mi propia experiencia de vida la que me enseñó que el conocimiento solo cobra verdadero sentido cuando se une con la empatía. Hoy, mi mayor motivación es utilizar la tecnología y la acción comunitaria para crear entornos más seguros y devolverle oportunidades a quienes han visto sus sueños pausados por circunstancias difíciles, convencida de que cada vida tiene un valor inmenso y siempre hay tiempo para volver a empezar.',
+    foto: '/founder.jpg',
+    instagram: 'https://www.instagram.com/_mimirl_/',
+    linkedin: '',
+    github: '',
+    web: ''
+  }
+];
 
 const URL_FORMULARIO_CONTACTO = 'https://formspree.io/f/xljblkdb';
 
@@ -244,7 +261,21 @@ export default function App() {
   );
   const [confirmarReinicioAdmin, setConfirmarReinicioAdmin] = useState(false);
   const [mensajeSistemaAdmin, setMensajeSistemaAdmin] = useState('');
-  const [fotoFundadoraFaltante, setFotoFundadoraFaltante] = useState(false);
+  const [equipo, setEquipo] = useState(() =>
+    leerAlmacenamiento(CLAVES_ALMACENAMIENTO.equipo, EQUIPO_INICIAL)
+  );
+  const [indiceMiembroEditando, setIndiceMiembroEditando] = useState(null);
+  const [formMiembroAdmin, setFormMiembroAdmin] = useState({
+    cargo: '',
+    nombre: '',
+    descripcionCorta: '',
+    biografia: '',
+    foto: '',
+    instagram: '',
+    linkedin: '',
+    github: '',
+    web: ''
+  });
 
   const [mostrarRecorrido, setMostrarRecorrido] = useState(!recorridoCompletado);
   const [pasoRecorrido, setPasoRecorrido] = useState(0);
@@ -346,6 +377,10 @@ export default function App() {
   useEffect(() => {
     guardarAlmacenamiento('kronodo_banner_admin_v1', bannerAvisoAdmin);
   }, [bannerAvisoAdmin]);
+
+  useEffect(() => {
+    guardarAlmacenamiento(CLAVES_ALMACENAMIENTO.equipo, equipo);
+  }, [equipo]);
 
   useEffect(() => {
     if (!temporizadorActivo) return;
@@ -576,6 +611,7 @@ export default function App() {
     setTareas(TAREAS_INICIALES);
     setMensajesGuardados([]);
     setFallas(FALLAS_INICIALES);
+    setEquipo(EQUIPO_INICIAL);
     setMinutosRetraso(0);
     setHerramientasSeleccionadas({ 0: 0, 1: 0, 2: 0 });
     Object.values(CLAVES_ALMACENAMIENTO).forEach((clave) => {
@@ -896,6 +932,94 @@ export default function App() {
     URL.revokeObjectURL(url);
     setMensajeSistemaAdmin('Respaldo JSON descargado correctamente.');
     setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+  };
+
+  const iniciarEdicionMiembro = (indice) => {
+    const miembro = equipo[indice];
+    if (!miembro) return;
+    setIndiceMiembroEditando(indice);
+    setFormMiembroAdmin({
+      cargo: miembro.cargo || '',
+      nombre: miembro.nombre || '',
+      descripcionCorta: miembro.descripcionCorta || '',
+      biografia: miembro.biografia || '',
+      foto: miembro.foto || '',
+      instagram: miembro.instagram || '',
+      linkedin: miembro.linkedin || '',
+      github: miembro.github || '',
+      web: miembro.web || ''
+    });
+  };
+
+  const cancelarEdicionMiembro = () => {
+    setIndiceMiembroEditando(null);
+    setFormMiembroAdmin({
+      cargo: '',
+      nombre: '',
+      descripcionCorta: '',
+      biografia: '',
+      foto: '',
+      instagram: '',
+      linkedin: '',
+      github: '',
+      web: ''
+    });
+  };
+
+  const manejarArchivoFotoEquipo = (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = () => {
+      if (typeof lector.result === 'string') {
+        setFormMiembroAdmin((prev) => ({ ...prev, foto: lector.result }));
+      }
+    };
+    lector.readAsDataURL(archivo);
+  };
+
+  const guardarMiembroEquipo = (e) => {
+    e.preventDefault();
+    const datosLimpios = {
+      cargo: formMiembroAdmin.cargo.trim(),
+      nombre: formMiembroAdmin.nombre.trim(),
+      descripcionCorta: formMiembroAdmin.descripcionCorta.trim(),
+      biografia: formMiembroAdmin.biografia.trim(),
+      foto: formMiembroAdmin.foto.trim() || '/founder.jpg',
+      instagram: formMiembroAdmin.instagram.trim(),
+      linkedin: formMiembroAdmin.linkedin.trim(),
+      github: formMiembroAdmin.github.trim(),
+      web: formMiembroAdmin.web.trim()
+    };
+
+    if (indiceMiembroEditando !== null) {
+      setEquipo((prev) =>
+        prev.map((item, idx) => (idx === indiceMiembroEditando ? { ...item, ...datosLimpios } : item))
+      );
+      setMensajeSistemaAdmin('Ficha de equipo actualizada.');
+      cancelarEdicionMiembro();
+    } else {
+      setEquipo((prev) => [
+        ...prev,
+        {
+          id: `miembro-${Date.now()}`,
+          ...datosLimpios
+        }
+      ]);
+      setMensajeSistemaAdmin('Nueva ficha agregada a la sección de equipo.');
+      cancelarEdicionMiembro();
+    }
+    setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+  };
+
+  const eliminarMiembroEquipo = (indice) => {
+    if (equipo.length <= 1) {
+      setMensajeSistemaAdmin('Debe mantenerse al menos una ficha en el equipo.');
+      setTimeout(() => setMensajeSistemaAdmin(''), 3000);
+      return;
+    }
+    setEquipo((prev) => prev.filter((_, idx) => idx !== indice));
+    if (indiceMiembroEditando === indice) cancelarEdicionMiembro();
   };
 
   const alternarMusica = async () => {
@@ -1410,7 +1534,7 @@ export default function App() {
           <section id="equipo-krono">
             <div className="encabezado-subpagina">
               <div>
-                <span className="etiqueta-seccion">Fundadora & Liderazgo</span>
+                <span className="etiqueta-seccion">Liderazgo & Talento</span>
                 <h1 className="titulo-seccion">Conoce a nuestro equipo</h1>
               </div>
               <button type="button" className="boton-secundario" onClick={() => irASeccion('contacto')}>
@@ -1418,55 +1542,83 @@ export default function App() {
               </button>
             </div>
 
-            <div className="tarjeta-cristal tarjeta-fundadora">
-              <div className="caja-foto-fundadora">
-                {!fotoFundadoraFaltante ? (
-                  <img
-                    src="/founder.jpg"
-                    alt="Milagros González — Founder de Krono Do"
-                    className="img-foto-fundadora"
-                    onError={() => setFotoFundadoraFaltante(true)}
-                  />
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '20px', color: '#ffffff', fontSize: '0.84rem' }}>
-                    <p style={{ fontWeight: 600, marginBottom: '6px' }}>Milagros González</p>
-                    <p style={{ color: '#ffffff', fontSize: '0.76rem' }}>
-                      Guarda tu foto en <strong>public/founder.jpg</strong> para mostrarla aquí.
-                    </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {equipo.map((integrante, idx) => (
+                <div key={integrante.id || idx} className="tarjeta-cristal tarjeta-fundadora">
+                  <div className="caja-foto-fundadora">
+                    <img
+                      src={integrante.foto || '/founder.jpg'}
+                      alt={`${integrante.nombre} — ${integrante.cargo}`}
+                      className="img-foto-fundadora"
+                    />
                   </div>
-                )}
-              </div>
 
-              <div>
-                <span className="etiqueta-seccion" style={{ marginBottom: '10px' }}>
-                  Founder de Krono Do
-                </span>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '6px' }}>Milagros González</h2>
-                <p style={{ color: '#ffffff', fontSize: '0.92rem', fontWeight: 500, marginBottom: '16px' }}>
-                  Fundadora de Krono Do • STEM, Innovación y Liderazgo con Propósito
-                </p>
+                  <div>
+                    <span className="etiqueta-seccion" style={{ marginBottom: '10px' }}>
+                      {integrante.cargo}
+                    </span>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '6px' }}>
+                      {integrante.nombre}
+                    </h2>
+                    {integrante.descripcionCorta && (
+                      <p style={{ color: '#ffffff', fontSize: '0.92rem', fontWeight: 500, marginBottom: '16px' }}>
+                        {integrante.descripcionCorta}
+                      </p>
+                    )}
 
-                <p style={{ color: '#ffffff', fontSize: '0.95rem', lineHeight: 1.75, marginBottom: '22px' }}>
-                  Soy Milagros González, una joven panameña apasionada por el mundo STEM, la innovación y el liderazgo con propósito. A lo largo de mi camino en programas como She Is Astronauta, Technovation Girls, Jóvenes CreaTIvos e Innova-Nation, he desarrollado herramientas técnicas y de trabajo en equipo, pero ha sido mi propia experiencia de vida la que me enseñó que el conocimiento solo cobra verdadero sentido cuando se une con la empatía. Hoy, mi mayor motivación es utilizar la tecnología y la acción comunitaria para crear entornos más seguros y devolverle oportunidades a quienes han visto sus sueños pausados por circunstancias difíciles, convencida de que cada vida tiene un valor inmenso y siempre hay tiempo para volver a empezar.
-                </p>
+                    <p style={{ color: '#ffffff', fontSize: '0.95rem', lineHeight: 1.75, marginBottom: '22px' }}>
+                      {integrante.biografia}
+                    </p>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-                  <a
-                    href="https://www.instagram.com/_mimirl_/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="boton-primario"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                    </svg>
-                    <span>Instagram: _mimirl_</span>
-                  </a>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                      {integrante.instagram && (
+                        <a
+                          href={integrante.instagram}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="boton-primario"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          Instagram
+                        </a>
+                      )}
+                      {integrante.linkedin && (
+                        <a
+                          href={integrante.linkedin}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="boton-secundario"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          LinkedIn
+                        </a>
+                      )}
+                      {integrante.github && (
+                        <a
+                          href={integrante.github}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="boton-secundario"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          GitHub
+                        </a>
+                      )}
+                      {integrante.web && (
+                        <a
+                          href={integrante.web}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="boton-secundario"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          Sitio / Portafolio
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </section>
         )}
@@ -1498,35 +1650,42 @@ export default function App() {
                 className={`boton-pestana-admin ${pestanaAdminCompleta === 'resumen' ? 'activo' : ''}`}
                 onClick={() => setPestanaAdminCompleta('resumen')}
               >
-                1. Resumen y Métricas
+                Resumen y Métricas
               </button>
               <button
                 type="button"
                 className={`boton-pestana-admin ${pestanaAdminCompleta === 'planes' ? 'activo' : ''}`}
                 onClick={() => setPestanaAdminCompleta('planes')}
               >
-                2. Planes y Catálogo ({planes.length})
+                Planes y Catálogo
               </button>
               <button
                 type="button"
                 className={`boton-pestana-admin ${pestanaAdminCompleta === 'mensajes' ? 'activo' : ''}`}
                 onClick={() => setPestanaAdminCompleta('mensajes')}
               >
-                3. Mensajes ({mensajesGuardados.length})
+                Mensajes
               </button>
               <button
                 type="button"
                 className={`boton-pestana-admin ${pestanaAdminCompleta === 'fallas' ? 'activo' : ''}`}
                 onClick={() => setPestanaAdminCompleta('fallas')}
               >
-                4. Fallas y QA ({fallas.length})
+                Fallas y QA
+              </button>
+              <button
+                type="button"
+                className={`boton-pestana-admin ${pestanaAdminCompleta === 'equipo' ? 'activo' : ''}`}
+                onClick={() => setPestanaAdminCompleta('equipo')}
+              >
+                Equipo
               </button>
               <button
                 type="button"
                 className={`boton-pestana-admin ${pestanaAdminCompleta === 'configuracion' ? 'activo' : ''}`}
                 onClick={() => setPestanaAdminCompleta('configuracion')}
               >
-                5. Configuración y Soporte
+                Configuración y Soporte
               </button>
             </div>
 
@@ -1870,9 +2029,10 @@ export default function App() {
             {pestanaAdminCompleta === 'mensajes' && (
               <div className="tarjeta-cristal">
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '1.15rem' }}>
-                    Bandeja de Mensajes ({mensajesGuardados.length})
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h3 style={{ fontSize: '1.15rem' }}>Bandeja de Mensajes</h3>
+                    <span className="circulo-contador-admin">{mensajesGuardados.length}</span>
+                  </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     <input
                       type="text"
@@ -2048,7 +2208,10 @@ export default function App() {
 
                 <div className="tarjeta-cristal">
                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                    <h3 style={{ fontSize: '1.15rem' }}>Fallas Registradas ({fallas.length})</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <h3 style={{ fontSize: '1.15rem' }}>Fallas Registradas</h3>
+                      <span className="circulo-contador-admin circulo-contador-secundario">{fallas.length}</span>
+                    </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       <input
                         type="text"
@@ -2168,6 +2331,192 @@ export default function App() {
                         </div>
                       ));
                     })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {pestanaAdminCompleta === 'equipo' && (
+              <div className="cuadricula-contacto">
+                <div className="tarjeta-cristal">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '1.15rem' }}>
+                      {indiceMiembroEditando !== null
+                        ? `Editando ficha: ${equipo[indiceMiembroEditando]?.nombre || ''}`
+                        : 'Agregar Nueva Ficha al Equipo'}
+                    </h3>
+                    {indiceMiembroEditando !== null && (
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        style={{ padding: '5px 10px', fontSize: '0.75rem' }}
+                        onClick={cancelarEdicionMiembro}
+                      >
+                        Cancelar edición
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={guardarMiembroEquipo}>
+                    <div className="grupo-campo">
+                      <label>Cargo / Rol</label>
+                      <input
+                        type="text"
+                        className="campo-entrada"
+                        value={formMiembroAdmin.cargo}
+                        onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, cargo: e.target.value }))}
+                        placeholder="Ej: Co-Founder / Desarrollo Frontend"
+                        required
+                      />
+                    </div>
+                    <div className="grupo-campo">
+                      <label>Nombre completo</label>
+                      <input
+                        type="text"
+                        className="campo-entrada"
+                        value={formMiembroAdmin.nombre}
+                        onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, nombre: e.target.value }))}
+                        placeholder="Nombre del integrante"
+                        required
+                      />
+                    </div>
+                    <div className="grupo-campo">
+                      <label>Pequeña descripción</label>
+                      <input
+                        type="text"
+                        className="campo-entrada"
+                        value={formMiembroAdmin.descripcionCorta}
+                        onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, descripcionCorta: e.target.value }))}
+                        placeholder="Ej: Especialista en UX y Producto Digital"
+                        required
+                      />
+                    </div>
+                    <div className="grupo-campo">
+                      <label>Texto / Biografía</label>
+                      <textarea
+                        rows="4"
+                        className="campo-entrada"
+                        value={formMiembroAdmin.biografia}
+                        onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, biografia: e.target.value }))}
+                        placeholder="Escribe la historia, rol o aporte de esta persona..."
+                        required
+                      />
+                    </div>
+                    <div className="grupo-campo">
+                      <label>Foto (URL o subir archivo)</label>
+                      <input
+                        type="text"
+                        className="campo-entrada"
+                        style={{ marginBottom: '8px' }}
+                        value={formMiembroAdmin.foto.startsWith('data:') ? 'Imagen cargada desde archivo' : formMiembroAdmin.foto}
+                        onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, foto: e.target.value }))}
+                        placeholder="/founder.jpg o https://..."
+                      />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="campo-entrada"
+                        onChange={manejarArchivoFotoEquipo}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="grupo-campo">
+                        <label>Instagram</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formMiembroAdmin.instagram}
+                          onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, instagram: e.target.value }))}
+                          placeholder="https://instagram.com/..."
+                        />
+                      </div>
+                      <div className="grupo-campo">
+                        <label>LinkedIn</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formMiembroAdmin.linkedin}
+                          onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, linkedin: e.target.value }))}
+                          placeholder="https://linkedin.com/in/..."
+                        />
+                      </div>
+                      <div className="grupo-campo">
+                        <label>GitHub</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formMiembroAdmin.github}
+                          onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, github: e.target.value }))}
+                          placeholder="https://github.com/..."
+                        />
+                      </div>
+                      <div className="grupo-campo">
+                        <label>Sitio web / Red adicional</label>
+                        <input
+                          type="text"
+                          className="campo-entrada"
+                          value={formMiembroAdmin.web}
+                          onChange={(e) => setFormMiembroAdmin((prev) => ({ ...prev, web: e.target.value }))}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+
+                    <button type="submit" className="boton-primario" style={{ width: '100%' }}>
+                      {indiceMiembroEditando !== null ? 'Guardar Cambios de Ficha' : 'Agregar Ficha al Equipo'}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="tarjeta-cristal">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '1.15rem' }}>Fichas del Equipo</h3>
+                    <span className="circulo-contador-admin">{equipo.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '560px', overflowY: 'auto' }}>
+                    {equipo.map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        style={{
+                          background: 'rgba(3,4,10,0.65)',
+                          border: '1px solid rgba(157,78,221,0.32)',
+                          borderRadius: '14px',
+                          padding: '14px',
+                          fontSize: '0.83rem'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <strong>{item.nombre}</strong>
+                          <span className="insignia-estado estado-resuelta">{item.cargo}</span>
+                        </div>
+                        {item.descripcionCorta && (
+                          <p style={{ fontSize: '0.77rem', marginBottom: '6px', opacity: 0.9 }}>{item.descripcionCorta}</p>
+                        )}
+                        <p style={{ fontSize: '0.78rem', lineHeight: 1.45, marginBottom: '10px' }}>
+                          {item.biografia}
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="boton-primario"
+                            style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                            onClick={() => iniciarEdicionMiembro(idx)}
+                          >
+                            Editar ficha
+                          </button>
+                          {equipo.length > 1 && (
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              style={{ padding: '5px 10px', fontSize: '0.74rem' }}
+                              onClick={() => eliminarMiembroEquipo(idx)}
+                            >
+                              Eliminar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -2835,9 +3184,10 @@ export default function App() {
 
                 <div className="cuadricula-contacto">
                   <div className="tarjeta-cristal">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>
-                      Mensajes Recibidos ({mensajesGuardados.length})
-                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <h3 style={{ fontSize: '1.15rem' }}>Mensajes Recibidos</h3>
+                      <span className="circulo-contador-admin">{mensajesGuardados.length}</span>
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
                       {mensajesGuardados.length === 0 ? (
                         <p style={{ fontSize: '0.85rem' }}>
@@ -2870,9 +3220,10 @@ export default function App() {
                   </div>
 
                   <div className="tarjeta-cristal">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: '14px' }}>
-                      Fallas Registradas ({fallas.length})
-                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <h3 style={{ fontSize: '1.15rem' }}>Fallas Registradas</h3>
+                      <span className="circulo-contador-admin circulo-contador-secundario">{fallas.length}</span>
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
                       {fallas.length === 0 ? (
                         <p style={{ fontSize: '0.85rem' }}>
